@@ -12,6 +12,10 @@ Write-Host "Cleaning up existing processes..." -ForegroundColor Yellow
 Stop-Process -Name "electron" -ErrorAction SilentlyContinue
 Stop-Process -Name "python" -ErrorAction SilentlyContinue
 
+# Ensure new dependencies are installed
+Write-Host "Checking AI OS dependencies..." -ForegroundColor Yellow
+python -m pip install psutil Pillow pywin32 --quiet
+
 # Launch App
 Write-Host "Launching Jan-Extended AI OS..." -ForegroundColor Green
 Set-Location -Path $appDir

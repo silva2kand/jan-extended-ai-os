@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Box, Globe, Shield, Zap, Info, Loader2, CheckCircle, ExternalLink, Play } from 'lucide-react';
+import { Search, Download, Box, Globe, Shield, Zap, Info, Loader2, CheckCircle, ExternalLink, Play, Cpu, Server } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/stores';
 
@@ -15,10 +15,43 @@ const ModelHub: React.FC = () => {
   const { addNotification } = useAppStore();
 
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
+  const [hardwareInfo, setHardwareInfo] = useState<any>(null);
 
   useEffect(() => {
     fetchLocalModels();
+    fetchHardwareInfo();
   }, [activeTab]);
+
+  const fetchHardwareInfo = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:3000/hardware-info');
+      const data = await response.json();
+      if (data.success) {
+        setHardwareInfo(data);
+      }
+    } catch (e) {
+      console.error("Could not fetch hardware info", e);
+    }
+  };
+
+  const getHardwareMatch = (modelId: string, hw: any) => {
+    if (!hw) return { status: 'unknown', text: 'Hardware Unknown', color: 'bg-slate-700 text-slate-300' };
+    
+    const idLower = modelId.toLowerCase();
+    let requiredRam = 8; 
+    
+    if (idLower.includes('70b') || idLower.includes('72b')) requiredRam = 32;
+    else if (idLower.includes('34b') || idLower.includes('8x7b')) requiredRam = 24;
+    else if (idLower.includes('13b') || idLower.includes('14b') || idLower.includes('12b')) requiredRam = 12;
+    else if (idLower.includes('7b') || idLower.includes('8b')) requiredRam = 8;
+    else if (idLower.includes('3b') || idLower.includes('1.5b') || idLower.includes('1b')) requiredRam = 4;
+
+    const totalAvailableRam = hw.ram_total_gb; // We can be conservative and just check sys ram, or add vram.
+    
+    if (totalAvailableRam >= requiredRam + 4) return { status: 'perfect', text: 'Perfect Match', color: 'bg-green-500/20 text-green-400 border border-green-500/30' };
+    if (totalAvailableRam >= requiredRam) return { status: 'okay', text: 'Should Work', color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' };
+    return { status: 'warning', text: `Heavy (${requiredRam}GB+ Req)`, color: 'bg-red-500/20 text-red-400 border border-red-500/30' };
+  };
 
   const fetchLocalModels = async () => {
     try {
@@ -108,9 +141,39 @@ const ModelHub: React.FC = () => {
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-white">Model Hub</h2>
-        <p className="text-slate-400">Search and download AI models from Hugging Face</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Model Hub</h2>
+          <p className="text-slate-400">Search and download AI models from Hugging Face</p>
+        </div>
+        
+        {hardwareInfo && (
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-3 flex gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-cyan-400" />
+              <div>
+                <p className="text-slate-400">CPU</p>
+                <p className="text-white font-medium truncate max-w-[150px]" title={hardwareInfo.cpu}>{hardwareInfo.cpu}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 border-l border-slate-700 pl-4">
+              <Server className="w-4 h-4 text-purple-400" />
+              <div>
+                <p className="text-slate-400">RAM</p>
+                <p className="text-white font-medium">{hardwareInfo.ram_total_gb} GB</p>
+              </div>
+            </div>
+            {hardwareInfo.gpu_name !== "Unknown GPU" && (
+              <div className="flex items-center gap-2 border-l border-slate-700 pl-4">
+                <Zap className="w-4 h-4 text-yellow-400" />
+                <div>
+                  <p className="text-slate-400">GPU</p>
+                  <p className="text-white font-medium truncate max-w-[120px]" title={hardwareInfo.gpu_name}>{hardwareInfo.gpu_name}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tab Switcher */}
@@ -195,6 +258,11 @@ const ModelHub: React.FC = () => {
                   <div className="flex items-center gap-1 text-xs text-slate-500">
                     <Zap className="w-3 h-3 text-yellow-500" /> Fast & Verified
                   </div>
+                  {hardwareInfo && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${getHardwareMatch(model.id, hardwareInfo).color}`}>
+                      {getHardwareMatch(model.id, hardwareInfo).text}
+                    </span>
+                  )}
                 </div>
 
                 {downloadingModel === model.id && (

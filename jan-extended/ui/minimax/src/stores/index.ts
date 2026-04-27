@@ -16,7 +16,8 @@ import type {
   MergeTask,
   SplitTask,
   SearchQuery,
-  AutomationScript
+  AutomationScript,
+  Plugin
 } from '@/types';
 
 // App Store
@@ -409,5 +410,33 @@ export const useSettingsStore = create<SettingsState>()(
         })),
     }),
     { name: 'settings-storage' }
+  )
+);
+
+// Plugin Store
+interface PluginState {
+  plugins: Plugin[];
+  togglePlugin: (id: string) => void;
+  updatePluginStatus: (id: string, status: string) => void;
+}
+
+export const usePluginStore = create<PluginState>()(
+  persist(
+    (set) => ({
+      plugins: [
+        { id: 'outlook', name: 'Outlook', icon: 'Mail', connected: false, status: 'Disconnected', description: 'Connect to your Desktop Outlook to read and draft emails.' },
+        { id: 'whatsapp', name: 'WhatsApp', icon: 'MessageCircle', connected: false, status: 'Disconnected', description: 'Quick-launch and send messages via WhatsApp Desktop.' },
+        { id: 'phonelink', name: 'Phone Link', icon: 'Smartphone', connected: false, status: 'Disconnected', description: 'Control your Android/iOS device via Windows Phone Link.' },
+        { id: 'chrome', name: 'Chrome', icon: 'Globe', connected: false, status: 'Disconnected', description: 'Automate web browsing and data extraction in Chrome.' },
+        { id: 'edge', name: 'Edge', icon: 'Layout', connected: false, status: 'Disconnected', description: 'Control and browse using Microsoft Edge natively.' },
+      ],
+      togglePlugin: (id) => set((state) => ({
+        plugins: state.plugins.map(p => p.id === id ? { ...p, connected: !p.connected, status: !p.connected ? 'Connected' : 'Disconnected' } : p)
+      })),
+      updatePluginStatus: (id, status) => set((state) => ({
+        plugins: state.plugins.map(p => p.id === id ? { ...p, status } : p)
+      })),
+    }),
+    { name: 'plugin-storage' }
   )
 );

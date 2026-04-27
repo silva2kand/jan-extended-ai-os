@@ -11,7 +11,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Link2
 } from 'lucide-react';
 import { useAppStore } from '@/stores';
 
@@ -23,6 +24,7 @@ const navItems = [
   { path: '/slide-maker', icon: Presentation, label: 'Slide Maker', color: 'text-purple-400' },
   { path: '/computer-expert', icon: Monitor, label: 'Computer Expert', color: 'text-orange-400' },
   { path: '/model-hub', icon: Box, label: 'Model Hub', color: 'text-yellow-400' },
+  { path: '/plugins', icon: Link2, label: 'Plugins', color: 'text-cyan-400' },
   { path: '/settings', icon: Settings, label: 'Settings', color: 'text-gray-400' },
 ];
 

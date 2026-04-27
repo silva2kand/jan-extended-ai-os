@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Minimize2, Maximize2, User, Bot, Loader2, Mic, MicOff, Copy, Volume2, Edit, Play, RotateCcw, ChevronRight, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { MessageSquare, Send, X, Minimize2, Maximize2, User, Bot, Loader2, Mic, MicOff, Copy, Volume2, Edit, Play, RotateCcw, ChevronRight, Image as ImageIcon, Paperclip, Eye, Terminal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ChatWindow: React.FC = () => {
@@ -93,27 +93,76 @@ const ChatWindow: React.FC = () => {
       content: image ? (input || "[Image Uploaded]") : input 
     };
     
-    setMessages(prev => [...prev, displayMessage]);
+    let currentMessages = [...messages, displayMessage];
+    setMessages(currentMessages);
     setInput('');
     setImage(null);
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/chat', {
+      let response = await fetch('http://127.0.0.1:3000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [...messages, userMessage] })
       });
-      const data = await response.json();
+      let data = await response.json();
       
       if (data.error) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
       } else {
         const aiMessage = data.choices[0].message;
-        setMessages(prev => [...prev, aiMessage]);
+        currentMessages = [...currentMessages, aiMessage];
+        setMessages(currentMessages);
+        
+        const commandMatch = aiMessage.content.match(/\[RUN_COMMAND:\s*(.*?)\]/);
+        if (commandMatch) {
+          const command = commandMatch[1];
+          const termRes = await fetch('http://127.0.0.1:3000/terminal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command })
+          });
+          const termData = await termRes.json();
+          const output = termData.output || termData.error || 'No output.';
+          
+          const toolMessage = { 
+            role: 'user' as const, 
+            content: `[Command Result]\n${output}` 
+          };
+          currentMessages = [...currentMessages, toolMessage];
+          setMessages(currentMessages);
+          
+          response = await fetch('http://127.0.0.1:3000/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: currentMessages })
+          });
+          data = await response.json();
+          if (!data.error) {
+            currentMessages = [...currentMessages, data.choices[0].message];
+            setMessages(currentMessages);
+          }
+        }
       }
     } catch (error: any) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Connection failed. Is Jan running?' }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWatchScreen = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('http://127.0.0.1:3000/screenshot');
+      const data = await res.json();
+      if (data.success) {
+        setImage(data.image);
+      } else {
+        alert("Failed to capture screen: " + data.error);
+      }
+    } catch (e) {
+      alert("Error capturing screen");
     } finally {
       setIsLoading(false);
     }
@@ -133,6 +182,8 @@ const ChatWindow: React.FC = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            drag
+            dragMomentum={false}
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ 
               opacity: 1, 
@@ -141,10 +192,11 @@ const ChatWindow: React.FC = () => {
               height: isMinimized ? '60px' : '600px'
             }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed bottom-24 right-6 w-96 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden z-50"
+            style={{ resize: isMinimized ? 'none' : 'both' }}
+            className="fixed bottom-24 right-6 w-96 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden z-50 min-w-[300px] min-h-[400px]"
           >
             {/* Header */}
-            <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-slate-700">
+            <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-slate-700 cursor-move">
               <div className="flex items-center gap-2">
                 <Bot className="w-5 h-5 text-cyan-400" />
                 <span className="font-semibold text-white">AI Assistant</span>
@@ -303,6 +355,13 @@ const ChatWindow: React.FC = () => {
                           </div>
                         )}
                       </div>
+                      <button
+                        onClick={handleWatchScreen}
+                        className={`p-2 rounded-lg transition-colors hover:bg-slate-700 text-slate-400`}
+                        title="Watch Screen"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
                       <button
                         onClick={toggleVoice}
                         className={`p-2 rounded-lg transition-colors ${isListening ? 'bg-red-500/20 text-red-400' : 'hover:bg-slate-700 text-slate-400'}`}

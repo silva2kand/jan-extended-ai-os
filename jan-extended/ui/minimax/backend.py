@@ -112,7 +112,15 @@ class ModelManager:
                     "You are running natively inside AI Desktop — a self-contained AI operating system. "
                     "You have no connection to any external services. "
                     "Your name is AI Desktop. Never say you were trained by Google or OpenAI. "
-                    "Be concise, helpful, and direct."
+                    "Be concise, helpful, and direct. "
+                    "If the user asks you to perform an action on their computer (like opening an app, checking system status, or managing files), "
+                    "you can execute PowerShell commands by wrapping them exactly like this: [RUN_COMMAND: <your_command>]. "
+                    "For example, to open notepad: [RUN_COMMAND: notepad.exe]. "
+                    "You have special access to 'Plugin Channels':\n"
+                    "- Outlook: Use 'Get-OutlookEmails' or 'Send-OutlookEmail' (simulated via Python helpers).\n"
+                    "- WhatsApp: Use [RUN_COMMAND: start whatsapp://send?text=Hello]\n"
+                    "- Phone Link: Use [RUN_COMMAND: start ms-phonelink://]\n"
+                    "- Browsers: Use [RUN_COMMAND: start chrome.exe https://google.com] or [RUN_COMMAND: start msedge.exe https://bing.com]"
                 )
                 
                 # Check if system prompt exists
@@ -230,6 +238,10 @@ async def run_terminal(req: Dict[str, Any]):
         
     try:
         # Run powershell command securely
+        # Special check for our internal Python-based helpers
+        if command.startswith("Get-OutlookEmails"):
+            return await get_outlook_emails()
+            
         result = subprocess.run(
             ["powershell", "-Command", command],
             capture_output=True,
@@ -249,6 +261,92 @@ async def run_terminal(req: Dict[str, Any]):
         return {"output": output, "exit_code": result.returncode}
     except Exception as e:
         return {"error": str(e)}
+
+import platform
+import base64
+
+@app.get("/hardware-info")
+async def get_hardware_info():
+    try:
+        import psutil
+        ram = psutil.virtual_memory()
+        total_ram_gb = round(ram.total / (1024**3), 1)
+        available_ram_gb = round(ram.available / (1024**3), 1)
+        
+        cpu_model = platform.processor()
+        
+        vram_gb = 0
+        gpu_name = "Unknown GPU"
+        try:
+            output = subprocess.check_output(
+                ["wmic", "path", "win32_VideoController", "get", "name,adapterram"],
+                text=True
+            )
+            lines = [l.strip() for l in output.split("\n") if l.strip()][1:]
+            for line in lines:
+                parts = line.split()
+                if len(parts) > 1:
+                    try:
+                        vram_bytes = int(parts[-1])
+                        vram_gb = max(vram_gb, round(vram_bytes / (1024**3), 1))
+                        gpu_name = " ".join(parts[:-1])
+                    except:
+                        pass
+        except:
+            pass
+
+        return {
+            "success": True,
+            "os": platform.system(),
+            "cpu": cpu_model,
+            "ram_total_gb": total_ram_gb,
+            "ram_available_gb": available_ram_gb,
+            "gpu_name": gpu_name,
+            "vram_total_gb": vram_gb
+        }
+    except ImportError:
+        return {"success": False, "error": "psutil not installed. Please run: pip install psutil"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/screenshot")
+async def take_screenshot():
+    try:
+        from PIL import ImageGrab
+        import io
+        screenshot = ImageGrab.grab()
+        if screenshot.mode in ('RGBA', 'P'):
+            screenshot = screenshot.convert('RGB')
+        
+        screenshot.thumbnail((1280, 720))
+        
+        buffered = io.BytesIO()
+        screenshot.save(buffered, format="JPEG", quality=80)
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        
+        return {"success": True, "image": f"data:image/jpeg;base64,{img_str}"}
+    except ImportError:
+        return {"success": False, "error": "Pillow not installed. Please run: pip install Pillow"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# Outlook Helper (Internal)
+async def get_outlook_emails():
+    try:
+        import win32com.client
+        outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+        inbox = outlook.GetDefaultFolder(6) # 6 = olFolderInbox
+        messages = inbox.Items
+        messages.Sort("[ReceivedTime]", True)
+        
+        email_list = []
+        for i in range(1, min(6, len(messages) + 1)):
+            msg = messages.Item(i)
+            email_list.append(f"From: {msg.SenderName} | Subject: {msg.Subject} | Date: {msg.ReceivedTime}")
+            
+        return {"output": "\n".join(email_list) if email_list else "No recent emails found."}
+    except Exception as e:
+        return {"error": f"Outlook Error: {str(e)} (Make sure Outlook is installed and configured)"}
 
 if __name__ == "__main__":
     print("\n------------------------------------")

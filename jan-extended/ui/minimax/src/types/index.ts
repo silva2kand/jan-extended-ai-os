@@ -377,3 +377,13 @@ export interface WebhookConfig {
   events: string[];
   active: boolean;
 }
+
+// Plugin Types
+export interface Plugin {
+  id: string;
+  name: string;
+  icon: string;
+  connected: boolean;
+  status: string;
+  description?: string;
+}

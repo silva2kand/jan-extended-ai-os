@@ -11,6 +11,7 @@ import Settings from './components/settings/Settings';
 import { useAppStore } from './stores';
 
 import ModelHub from './components/model-hub/ModelHub';
+import PluginManager from './components/plugins/PluginManager';
 
 function App() {
   const { isLoading } = useAppStore();
@@ -26,6 +27,7 @@ function App() {
           <Route path="/slide-maker" element={<SlideMaker />} />
           <Route path="/computer-expert" element={<ComputerExpert />} />
           <Route path="/model-hub" element={<ModelHub />} />
+          <Route path="/plugins" element={<PluginManager />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </AppShell>
