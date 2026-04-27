@@ -330,6 +330,47 @@ async def take_screenshot():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.get("/system-pulse")
+async def get_system_pulse():
+    try:
+        import psutil
+        cpu_usage = psutil.cpu_percent(interval=None)
+        ram = psutil.virtual_memory()
+        ram_usage = ram.percent
+        
+        # Try to get GPU usage via nvidia-smi if available, else fallback
+        gpu_usage = 0
+        try:
+            output = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+                text=True,
+                timeout=1
+            )
+            gpu_usage = int(output.strip())
+        except:
+            # Fallback for integrated or non-nvidia GPUs on Windows
+            try:
+                output = subprocess.check_output(
+                    ["powershell", "-Command", "Get-Counter '\\GPU Engine(*)\\Utilization Percentage' | Select-Object -ExpandProperty CounterSamples | Select-Object -ExpandProperty CookedValue"],
+                    text=True,
+                    timeout=1
+                )
+                vals = [float(v) for v in output.split("\n") if v.strip()]
+                if vals:
+                    gpu_usage = round(sum(vals) / len(vals), 1)
+            except:
+                pass
+
+        return {
+            "success": True,
+            "cpu": cpu_usage,
+            "ram": ram_usage,
+            "gpu": gpu_usage,
+            "timestamp": platform.node()
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 # Outlook Helper (Internal)
 async def get_outlook_emails():
     try:

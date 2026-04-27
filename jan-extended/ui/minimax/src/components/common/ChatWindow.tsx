@@ -193,7 +193,7 @@ const ChatWindow: React.FC = () => {
             }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
             style={{ resize: isMinimized ? 'none' : 'both' }}
-            className="fixed bottom-24 right-6 w-96 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden z-50 min-w-[300px] min-h-[400px]"
+            className={`fixed bottom-24 right-6 w-96 bg-slate-800/80 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden z-50 min-w-[300px] min-h-[400px] neural-glow ${isLoading ? 'active' : ''}`}
           >
             {/* Header */}
             <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-slate-700 cursor-move">

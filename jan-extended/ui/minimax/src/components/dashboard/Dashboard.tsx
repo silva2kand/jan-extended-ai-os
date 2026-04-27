@@ -74,6 +74,64 @@ const stats = [
   { label: 'Tasks Automated', value: '1,293', icon: Monitor, change: '+45%', color: 'text-orange-400' },
 ];
 
+const SystemPulse: React.FC = () => {
+  const [pulse, setPulse] = React.useState<any>(null);
+  
+  React.useEffect(() => {
+    const fetchPulse = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:3000/system-pulse');
+        const data = await response.json();
+        if (data.success) setPulse(data);
+      } catch (e) {}
+    };
+    fetchPulse();
+    const interval = setInterval(fetchPulse, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!pulse) return null;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="grid grid-cols-1 md:grid-cols-3 gap-6"
+    >
+      {[
+        { label: 'CPU Usage', value: pulse.cpu, color: 'text-cyan-400', bg: 'bg-cyan-500/10', glow: 'shadow-cyan-500/20' },
+        { label: 'GPU Load', value: pulse.gpu, color: 'text-emerald-400', bg: 'bg-emerald-500/10', glow: 'shadow-emerald-500/20' },
+        { label: 'Memory', value: pulse.ram, color: 'text-purple-400', bg: 'bg-purple-500/10', glow: 'shadow-purple-500/20' },
+      ].map((item) => (
+        <div key={item.label} className={`card relative overflow-hidden group hover:border-white/20 transition-all ${item.glow}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className={`p-2 rounded-lg ${item.bg} ${item.color}`}>
+                <Activity className="w-4 h-4 animate-pulse" />
+              </div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
+            </div>
+            <span className={`text-xl font-bold text-white`}>{item.value}%</span>
+          </div>
+          
+          <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+            <motion.div 
+              className={`h-full bg-gradient-to-r from-transparent via-white/50 to-current ${item.color}`}
+              initial={{ width: 0 }}
+              animate={{ width: `${item.value}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+            />
+          </div>
+
+          {/* Background Decorative Glow */}
+          <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full blur-3xl opacity-10 ${item.color.replace('text', 'bg')}`} />
+        </div>
+      ))}
+    </motion.div>
+  );
+};
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { projects } = useProjectStore();
@@ -132,6 +190,9 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       </motion.div>
+
+      {/* System Pulse */}
+      <SystemPulse />
 
       {/* Modules Grid */}
       <div>

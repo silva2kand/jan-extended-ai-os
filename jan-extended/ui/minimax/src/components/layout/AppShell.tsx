@@ -14,7 +14,10 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const { sidebarOpen } = useAppStore();
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="flex h-screen bg-[#0f172a] relative overflow-hidden">
+      {/* Neural background pulses */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 rounded-full blur-[120px] animate-pulse" />
       {/* Sidebar */}
       <Sidebar />
 
