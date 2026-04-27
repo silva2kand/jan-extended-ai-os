@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Link2
+  Link2,
+  Database
 } from 'lucide-react';
 import { useAppStore } from '@/stores';
 
@@ -25,6 +26,7 @@ const navItems = [
   { path: '/computer-expert', icon: Monitor, label: 'Computer Expert', color: 'text-orange-400' },
   { path: '/model-hub', icon: Box, label: 'Model Hub', color: 'text-yellow-400' },
   { path: '/plugins', icon: Link2, label: 'Plugins', color: 'text-cyan-400' },
+  { path: '/knowledge-base', icon: Database, label: 'Knowledge Base', color: 'text-emerald-400' },
   { path: '/settings', icon: Settings, label: 'Settings', color: 'text-gray-400' },
 ];
 

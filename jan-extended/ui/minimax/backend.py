@@ -3,10 +3,22 @@ import subprocess
 import json
 import requests
 import io
+import threading
+import logging
+import platform
+import psutil
+from datetime import datetime
 from fastapi import FastAPI, Request, UploadFile, File
 from pydantic import BaseModel
 from typing import Any, Dict, Optional, List
 import uvicorn
+
+# RAG Imports
+try:
+    import chromadb
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    print("RAG libraries not found. Run: pip install chromadb sentence-transformers")
 
 app = FastAPI()
 
@@ -102,69 +114,81 @@ class ModelManager:
             print(f"ERROR: Failed to load model natively: {str(e)}")
         return False
 
-    def chat(self, messages):
+    async def chat(self, messages: list):
+        if not self.llm:
+            return {"choices": [{"message": {"role": "assistant", "content": "[NATIVE ENGINE] No model loaded. Please load a model from the Hub first."}}]}
+            
+        # --- PHASE 2: MEMORY UPGRADE (RAG) ---
+        try:
+            user_query = messages[-1]["content"]
+            if isinstance(user_query, str) and len(user_query) > 5:
+                context = await memory_manager.search(user_query)
+                if context:
+                    # Inject context into the system prompt or as a helper message
+                    context_msg = f"--- LOCAL DOCUMENT CONTEXT ---\nThe following information was found in your local files:\n{context}\n-----------------------------"
+                    # Find system message or insert at beginning
+                    system_msg_idx = -1
+                    for idx, msg in enumerate(messages):
+                        if msg["role"] == "system":
+                            system_msg_idx = idx
+                            break
+                    
+                    if system_msg_idx != -1:
+                        messages[system_msg_idx]["content"] += f"\n\n{context_msg}"
+                    else:
+                        messages.insert(0, {"role": "system", "content": context_msg})
+        except Exception as e:
+            print(f"RAG Error: {e}")
+        # ------------------------------------
+
         # Native inference
-        if self.llm:
-            try:
-                # Force AI Desktop identity
-                system_prompt = (
-                    "You are AI Desktop, a powerful built-in AI assistant. "
-                    "You are running natively inside AI Desktop — a self-contained AI operating system. "
-                    "You have no connection to any external services. "
-                    "Your name is AI Desktop. Never say you were trained by Google or OpenAI. "
-                    "Be concise, helpful, and direct. "
-                    "If the user asks you to perform an action on their computer (like opening an app, checking system status, or managing files), "
-                    "you can execute PowerShell commands by wrapping them exactly like this: [RUN_COMMAND: <your_command>]. "
-                    "For example, to open notepad: [RUN_COMMAND: notepad.exe]. "
-                    "You have special access to 'Plugin Channels':\n"
-                    "- Outlook: Use 'Get-OutlookEmails' or 'Send-OutlookEmail' (simulated via Python helpers).\n"
-                    "- WhatsApp: Use [RUN_COMMAND: start whatsapp://send?text=Hello]\n"
-                    "- Phone Link: Use [RUN_COMMAND: start ms-phonelink://]\n"
-                    "- Browsers: Use [RUN_COMMAND: start chrome.exe https://google.com] or [RUN_COMMAND: start msedge.exe https://bing.com]"
-                )
-                
-                # Check if system prompt exists
-                has_system = False
-                for m in messages:
-                    if m.get("role") == "system":
-                        m["content"] = system_prompt + "\n\n" + m.get("content", "")
-                        has_system = True
-                        break
-                        
-                if not has_system:
-                    messages.insert(0, {"role": "system", "content": system_prompt})
+        try:
+            # Force AI Desktop identity
+            system_prompt = (
+                "You are AI Desktop, a powerful built-in AI assistant. "
+                "You are running natively inside AI Desktop — a self-contained AI operating system. "
+                "You have no connection to any external services. "
+                "Your name is AI Desktop. Never say you were trained by Google or OpenAI. "
+                "Be concise, helpful, and direct. "
+                "If the user asks you to perform an action on their computer (like opening an app, checking system status, or managing files), "
+                "you can execute PowerShell commands by wrapping them exactly like this: [RUN_COMMAND: <your_command>]. "
+                "For example, to open notepad: [RUN_COMMAND: notepad.exe]. "
+                "You have special access to 'Plugin Channels':\n"
+                "- Outlook: Use 'Get-OutlookEmails' or 'Send-OutlookEmail' (simulated via Python helpers).\n"
+                "- WhatsApp: Use [RUN_COMMAND: start whatsapp://send?text=Hello]\n"
+                "- Phone Link: Use [RUN_COMMAND: start ms-phonelink://]\n"
+                "- Browsers: Use [RUN_COMMAND: start chrome.exe https://google.com] or [RUN_COMMAND: start msedge.exe https://bing.com]"
+            )
+            
+            # Check if system prompt exists
+            has_system = False
+            for m in messages:
+                if m.get("role") == "system":
+                    m["content"] = system_prompt + "\n\n" + m.get("content", "")
+                    has_system = True
+                    break
+                    
+            if not has_system:
+                messages.insert(0, {"role": "system", "content": system_prompt})
 
-                response = self.llm.create_chat_completion(
-                    messages=messages,
-                    stream=False,
-                    max_tokens=1024,
-                    repeat_penalty=1.1,
-                    stop=["<|im_end|>", "<|endoftext|>", "</s>", "<|eot_id|>", "<end_of_turn>"]
-                )
-                return response
-            except Exception as e:
-                print(f"ERROR: Inference failed: {str(e)}")
-                return {
-                    "choices": [{
-                        "message": {
-                            "role": "assistant",
-                            "content": f"Inference Error: {str(e)}"
-                        }
-                    }]
-                }
-
-        # Fallback error if no model loaded
-        return {
-            "choices": [{
-                "message": {
-                    "role": "assistant",
-                    "content": "[NATIVE ENGINE] No model loaded. Please load a model from the Hub first."
-                }
-            }]
-        }
-
-
-
+            response = self.llm.create_chat_completion(
+                messages=messages,
+                stream=False,
+                max_tokens=1024,
+                repeat_penalty=1.1,
+                stop=["<|im_end|>", "<|endoftext|>", "</s>", "<|eot_id|>", "<end_of_turn>"]
+            )
+            return response
+        except Exception as e:
+            print(f"ERROR: Inference failed: {str(e)}")
+            return {
+                "choices": [{
+                    "message": {
+                        "role": "assistant",
+                        "content": f"Inference Error: {str(e)}"
+                    }
+                }]
+            }
 
 manager = ModelManager()
 
@@ -370,6 +394,87 @@ async def get_system_pulse():
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# --- MEMORY MANAGER (RAG) ---
+class MemoryManager:
+    def __init__(self):
+        self.db_path = os.path.join(os.path.expanduser("~"), "AI_Desktop_Memory")
+        self.client = None
+        self.collection = None
+        self.model = None
+        self.is_indexing = False
+
+    def ensure_init(self):
+        if self.client is None:
+            try:
+                self.client = chromadb.PersistentClient(path=self.db_path)
+                self.collection = self.client.get_or_create_collection(name="user_docs")
+                self.model = SentenceTransformer('all-MiniLM-L6-v2')
+            except Exception as e:
+                print(f"Memory Init Error: {e}")
+
+    async def index_documents(self):
+        self.ensure_init()
+        if self.is_indexing: return "Already indexing"
+        self.is_indexing = True
+        
+        try:
+            docs_path = os.path.join(os.path.expanduser("~"), "Documents")
+            indexed_count = 0
+            
+            for root, _, files in os.walk(docs_path):
+                for file in files:
+                    if file.endswith(('.txt', '.md', '.pdf', '.docx')):
+                        # Simple chunking logic for now
+                        file_path = os.path.join(root, file)
+                        try:
+                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+                                if len(content) < 10: continue
+                                
+                                # Chunking (500 chars)
+                                chunks = [content[i:i+500] for i in range(0, len(content), 500)]
+                                for j, chunk in enumerate(chunks[:20]): # Limit per file for speed
+                                    self.collection.add(
+                                        documents=[chunk],
+                                        metadatas=[{"source": file, "path": file_path}],
+                                        ids=[f"{file}_{j}_{indexed_count}"]
+                                    )
+                                indexed_count += 1
+                        except: continue
+            
+            self.is_indexing = False
+            return f"Successfully indexed {indexed_count} documents."
+        except Exception as e:
+            self.is_indexing = False
+            return f"Indexing failed: {str(e)}"
+
+    async def search(self, query: str):
+        self.ensure_init()
+        if not self.collection or not self.model: return None
+        
+        try:
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=3
+            )
+            if results and results['documents'] and results['documents'][0]:
+                return "\n".join(results['documents'][0])
+            return None
+        except: return None
+
+memory_manager = MemoryManager()
+
+@app.post("/memory/index")
+async def start_indexing():
+    message = await memory_manager.index_documents()
+    return {"success": True, "message": message}
+
+@app.get("/memory/status")
+async def get_memory_status():
+    memory_manager.ensure_init()
+    count = memory_manager.collection.count() if memory_manager.collection else 0
+    return {"success": True, "count": count, "is_indexing": memory_manager.is_indexing}
 
 # Outlook Helper (Internal)
 async def get_outlook_emails():

@@ -12,6 +12,7 @@ import { useAppStore } from './stores';
 
 import ModelHub from './components/model-hub/ModelHub';
 import PluginManager from './components/plugins/PluginManager';
+import KnowledgeBase from './components/memory/KnowledgeBase';
 
 function App() {
   const { isLoading } = useAppStore();
@@ -28,6 +29,7 @@ function App() {
           <Route path="/computer-expert" element={<ComputerExpert />} />
           <Route path="/model-hub" element={<ModelHub />} />
           <Route path="/plugins" element={<PluginManager />} />
+          <Route path="/knowledge-base" element={<KnowledgeBase />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </AppShell>
