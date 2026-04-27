@@ -193,7 +193,7 @@ const ChatWindow: React.FC = () => {
             }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
             style={{ resize: isMinimized ? 'none' : 'both' }}
-            className={`fixed bottom-24 right-6 w-96 bg-slate-800/80 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden z-50 min-w-[300px] min-h-[400px] neural-glow ${isLoading ? 'active' : ''}`}
+            className={`fixed bottom-24 right-6 w-[450px] h-[600px] bg-slate-800/90 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden z-50 min-w-[350px] min-h-[450px] neural-glow ${isLoading ? 'active' : ''}`}
           >
             {/* Header */}
             <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-slate-700 cursor-move">
@@ -313,7 +313,61 @@ const ChatWindow: React.FC = () => {
                   )}
                 </div>
 
-                {/* Input */}
+                {/* Toolbar */}
+                <div className="px-4 py-2 bg-slate-900/50 border-t border-slate-700/50 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <button className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors" title="Attach File">
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`p-2 rounded-lg transition-colors ${image ? 'bg-cyan-500/20 text-cyan-400' : 'hover:bg-slate-700 text-slate-400'}`}
+                        title="Upload Image"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                      </button>
+                      {image && (
+                        <div className="absolute -top-12 -left-2 bg-slate-800 p-1 rounded border border-slate-700 shadow-xl">
+                          <img src={image} className="w-10 h-10 object-cover rounded" alt="Preview" />
+                          <button 
+                            onClick={() => setImage(null)}
+                            className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 text-white"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleWatchScreen}
+                      className="p-2 rounded-lg transition-colors hover:bg-slate-700 text-slate-400"
+                      title="Watch Screen"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={toggleVoice}
+                      className={`p-2 rounded-lg transition-colors ${isListening ? 'bg-red-500/20 text-red-400' : 'hover:bg-slate-700 text-slate-400'}`}
+                      title="Voice Input"
+                    >
+                      {isListening ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    NEURAL_ENGINE_V2
+                  </div>
+                </div>
+
+                {/* Input Field */}
                 <div className="p-4 bg-slate-900 border-t border-slate-700">
                   <div className="flex gap-2">
                     <input
@@ -322,56 +376,12 @@ const ChatWindow: React.FC = () => {
                       onChange={(e) => setInput(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                       placeholder="Type a message..."
-                      className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                      className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 shadow-inner"
                     />
-                    <div className="flex items-center gap-2">
-                      <button className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors">
-                        <Paperclip className="w-5 h-5" />
-                      </button>
-                      
-                      <div className="relative">
-                        <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                        <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className={`p-2 rounded-lg transition-colors ${image ? 'bg-cyan-500/20 text-cyan-400' : 'hover:bg-slate-700 text-slate-400'}`}
-                        >
-                          <ImageIcon className="w-5 h-5" />
-                        </button>
-                        {image && (
-                          <div className="absolute -top-12 -left-2 bg-slate-800 p-1 rounded border border-slate-700 shadow-xl">
-                            <img src={image} className="w-10 h-10 object-cover rounded" alt="Preview" />
-                            <button 
-                              onClick={() => setImage(null)}
-                              className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 text-white"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={handleWatchScreen}
-                        className={`p-2 rounded-lg transition-colors hover:bg-slate-700 text-slate-400`}
-                        title="Watch Screen"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={toggleVoice}
-                        className={`p-2 rounded-lg transition-colors ${isListening ? 'bg-red-500/20 text-red-400' : 'hover:bg-slate-700 text-slate-400'}`}
-                      >
-                        {isListening ? <MicOff className="w-5 h-5 animate-pulse" /> : <Mic className="w-5 h-5" />}
-                      </button>
-                    </div>
                     <button
                       onClick={handleSend}
-                      className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-white transition-colors"
+                      className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20 flex-shrink-0"
+                      title="Send Message"
                     >
                       <Send className="w-5 h-5" />
                     </button>

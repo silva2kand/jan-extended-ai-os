@@ -238,7 +238,7 @@ async def chat_proxy(req: Dict[str, Any]):
             "role": "system", 
             "content": "You are a concise AI assistant. Provide accurate, technical, and direct answers."
         })
-    return manager.chat(messages)
+    return await manager.chat(messages)
 
 # Tools registry
 TOOLS = {

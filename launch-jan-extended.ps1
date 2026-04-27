@@ -13,8 +13,8 @@ Stop-Process -Name "electron" -ErrorAction SilentlyContinue
 Stop-Process -Name "python" -ErrorAction SilentlyContinue
 
 # Ensure new dependencies are installed
-Write-Host "Checking AI OS dependencies (this may take a moment for RAG libraries)..." -ForegroundColor Yellow
-python -m pip install psutil Pillow pywin32 chromadb sentence-transformers --quiet
+Write-Host "Checking AI OS dependencies (Downloading RAG libraries if missing, please wait)..." -ForegroundColor Yellow
+python -m pip install psutil Pillow pywin32 chromadb sentence-transformers
 
 # Launch App
 Write-Host "Launching Jan-Extended AI OS..." -ForegroundColor Green
