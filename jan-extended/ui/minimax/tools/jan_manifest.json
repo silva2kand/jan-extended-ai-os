@@ -1,0 +1,28 @@
+{
+  "name": "Jan-Extended Tools",
+  "description": "Advanced OS automation and business agents for Jan",
+  "version": "1.0.0",
+  "mcp_server_url": "http://localhost:3000/mcp",
+  "tools": [
+    {
+      "name": "run_terminal",
+      "description": "Execute terminal commands",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Read local files",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" }
+        }
+      }
+    }
+  ]
+}

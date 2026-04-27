@@ -1,0 +1,6 @@
+{
+  "message": "hi",
+  "models": ["ollama:llama3.1"],
+  "agent_id": "auto",
+  "context": {}
+}
